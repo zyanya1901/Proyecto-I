@@ -1,125 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
 <model version="NetLogo 7.0.1" snapToGrid="true">
-  <code><![CDATA[;; Modelo de Lotka-Volterra
+  <code><![CDATA[;;Definimos propiedades
+turtles-own [reloj]
 
-;;Para crear distintos conjuntos de animales o agentes
-breed[ovejas oveja]
-breed[lobos lobo]
-
-;;Para definir la variable de energía a cada grupo
-ovejas-own [energia]
-lobos-own [energia]
+;;para definir una variable local
+globals[luciernaga_muestra]
 
 to setup
   clear-all
-  ask patches [set pcolor green]
-  
-  create-ovejas cantidad_ovejas [
-    set shape "sheep"
+  create-turtles num_luciernagas [
+    set shape "circle"
     setxy random-xcor random-ycor
-    set color white
-    set energia random 20
-    ;;random: valor aleatorio entre 0 y 20
+    set reloj random umbral ;;nos va a dar un número aleatorio entre cero y umbral-1
+    set color gray
   ]
+  ;;creamos la cantidad de luciérnagas que el contador nos indique
   
-  create-lobos cantidad_lobos [
-    set shape "wolf"
-    setxy random-xcor random-ycor
-    set color black
-    set energia random 20
-    ;;random: valor aleatorio entre 0 y 20
-  ]
+  set luciernaga_muestra one-of turtles ;;agarrar una luciérnaga al azar de entre todas
   
-  reset-ticks ;;inicializar el relojcito de los ticks
+  
+  
+  reset-ticks ;;reseteamos el contador
 end
 
-
-;;para que se muevan los agentes
 to go
-  ask ovejas [
+  ask turtles [
     moverse
-    comer
-    morirse
-    reproducirse
+    avanzar_reloj ;;cada que se muevan deben avanzar su reloj
+    revisar_vecinos
   ]
   
-  ask lobos [
-    moverse
-    comer_ovejas
-    morirse
-    reproducirse
-  ]
-  
-  ask patches[
-    regenerarse
-  ]
-  
-  tick ;;avanza el relojito una unidad
+  tick ;;para que cuente el contador
 end
 
 to moverse
-  rt random 45
-  lt random 45
-  fd 1
-  ;;random: valor aleatorio entre 0 y 45
-  set energia energia - 1 
-  ;;ir quitando uno a la energía al moverse
+  ;;que giren de forma aleatoria
+  right random 90
+  left random 90
+  ;;para que avancen
+  fd 0.1
 end
 
-to morirse
-  ;;para ver si pasa un umbral de energía
-  if energia <= 0 [
-    die
+;;El contador del reloj incrementa en 1
+;;si el contador llega al umbral, entonces se prende su luz
+to avanzar_reloj
+  set reloj reloj + 1
+  
+  ifelse reloj = umbral [
+    set color yellow
+    set reloj 0
+  ][
+    set color gray ;;para cuando el reloj no esté en el umbral, se deben apagar
   ]
 end
 
-;;los agentes tienen acceso a las variables en donde están paradas 
-;;entonces las ovejas ya checan el cuadrito el cual está abajo de ellas
-to comer 
-  if pcolor = green[
-    set pcolor brown 
-    set energia energia + 3
-    ;;sube su energía cuando comen
+;;un comando para cada luciérnaga
+to revisar_vecinos
+  ;;defino una variable local
+  ;;Contamos todas las vecinas (sin contarme a mí) de color amarillo en el radio establecido por el slider
+  let luces_vecinas count other turtles with [color = yellow] in-radius radio_vision
+  
+  ;;checar si ese número es mayor al número que necesito para prenderme
+  ;;tomando en cuenta también si están en la ventana de no respuesta
+  ;;para eso verificamos si el parámetro reloj de cada luciérnaga es mayor al valor de ventana
+  if luces_vecinas >= min_luces_resetear and reloj > ventana[
+    set reloj 0
+  ]
+  
+  ;;le quitamos el color poco a poco a las que tengan el reloj abajo de 5
+  if color != yellow and reloj < 5[
+    set color yellow - (0.5 * reloj) ;;se va a ir difuminando el color
+    ;;el yellow es un número para netlogo
   ]
 end
 
-
-to reproducirse
-  ;;establecemos el umbral para que se reproduzcan
-  if energia > 20 [
-    set energia energia / 2 ;;pierden la mitad de su energía al reproducirse
-    hatch 1 ;;Hace un clon de la ovejita
+to-report entropia_shannon
+  ;;Contamos todas las luciérnagas que hayan 
+  let total_luciernagas count turtles
+  
+  ;;Contamos todas las luciérnagas que estén en prendidas y las dividimos entre el total para ver qué fracción representan
+  let p1 (count turtles with [color = yellow]) / total_luciernagas
+  
+  ;;Hacemos lo mismo para las luciérnagas que estén apagadas
+  let p2 (count turtles with [color = gray]) / total_luciernagas
+  
+  ;;inicializamos la entropia en cero
+  let entropia 0
+  
+  ;;Verificamos que ninguna de los estados sea cero y si lo es, hacemos que el sumando correspondiente a ese estado sea cero automáticamente
+  if p1 = 0[
+    set entropia entropia + (p2 * log p2 2)
   ]
-end
-
-to comer_ovejas
-  ;;para que los lobos chequen si hay alguna oveja en su cuadrito
-  if any? ovejas-here [
-    ;;toma una de las ovejas al azar y matarla
-    ask one-of ovejas-here [die]
-    
-    set energia energia + 10
+  
+  if p2 = 0[
+    set entropia entropia + (p1 * log p1 2)
   ]
-end
-
-to regenerarse
-  if pcolor = brown and random-float 1 <= tasa_regeneracion_pasto and any? neighbors with [pcolor = green] [
-    set pcolor green
+  
+  if p1 = 0 and p2 = 0[
+    set entropia 0
   ]
+  
+  report (-1) * (entropia)
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -142,31 +124,37 @@ end
 
 ]]></code>
   <widgets>
-    <view x="480" wrappingAllowedX="true" y="10" frameRate="30.0" minPycor="-16" height="434" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="true" width="434" tickCounterLabel="ticks" maxPycor="16" updateMode="1" maxPxcor="16" minPxcor="-16"></view>
-    <button x="10" y="20" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">setup</button>
-    <button x="10" y="70" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go
+    <view x="455" wrappingAllowedX="true" y="15" frameRate="30.0" minPycor="-16" height="434" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="true" width="434" tickCounterLabel="ticks" maxPycor="16" updateMode="1" maxPxcor="16" minPxcor="-16"></view>
+    <button x="15" y="15" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">setup
 </button>
-    <slider x="85" step="1" y="80" max="100" width="150" display="cantidad_ovejas" height="100" min="0" direction="Horizontal" default="28.0" variable="cantidad_ovejas"></slider>
-    <slider x="240" step="1" y="80" max="100" width="150" display="cantidad_lobos" height="100" min="0" direction="Horizontal" default="67.0" variable="cantidad_lobos"></slider>
-    <slider x="85" step="0.01" y="20" max="1" width="305" display="tasa_regeneracion_pasto" height="50" min="0" direction="Horizontal" default="0.26" variable="tasa_regeneracion_pasto"></slider>
-    <plot x="10" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="tamaño" y="195" xMin="0.0" height="185" legend="true" xMax="10.0" yMin="0.0" width="225" xAxis="tiempo" display="Poblaciones">
+    <button x="15" y="65" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
+    <slider x="80" step="10" y="15" max="1000" width="150" display="num_luciernagas" height="95" min="0" direction="Horizontal" default="850.0" variable="num_luciernagas"></slider>
+    <slider x="235" step="1" y="15" max="40" width="150" display="umbral" height="95" min="10" direction="Horizontal" default="28.0" variable="umbral"></slider>
+    <slider x="10" step="1" y="115" max="5" width="220" display="min_luces_resetear" height="50" min="1" direction="Horizontal" default="3.0" variable="min_luces_resetear"></slider>
+    <slider x="235" step="1" y="115" max="5" width="150" display="radio_vision" height="50" min="1" direction="Horizontal" default="4.0" variable="radio_vision"></slider>
+    <slider x="10" step="1" y="170" max="10" width="375" display="ventana" height="50" min="0" direction="Horizontal" default="1.0" variable="ventana"></slider>
+    <plot x="10" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="reloj" y="225" xMin="0.0" height="225" legend="false" xMax="10.0" yMin="0.0" width="215" xAxis="tiempo" display="reloj de luciérnaga muestra">
       <setup></setup>
       <update></update>
-      <pen interval="1.0" mode="0" display="ovejas" color="-4699768" legend="true">
+      <pen interval="1.0" mode="0" display="default" color="-8275240" legend="true">
         <setup></setup>
-        <update>plot count ovejas</update>
-      </pen>
-      <pen interval="1.0" mode="0" display="lobos" color="-8630108" legend="true">
-        <setup></setup>
-        <update>plot count lobos</update>
+        <update>plot [reloj] of luciernaga_muestra</update>
       </pen>
     </plot>
-    <plot x="240" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="Lobos / Depredador" y="195" xMin="0.0" height="185" legend="false" xMax="10.0" yMin="0.0" width="230" xAxis="Ovejas / Presa" display="Espacio fase">
+    <plot x="910" autoPlotX="true" yMax="1.0" autoPlotY="true" yAxis="Entropía Shannon" y="15" xMin="0.0" height="175" legend="false" xMax="10.0" yMin="0.0" width="230" xAxis="Probabilidad" display="Entropia de Shannon">
       <setup></setup>
       <update></update>
-      <pen interval="1.0" mode="0" display="default" color="-11033397" legend="true">
+      <pen interval="1.0" mode="0" display="entropía" color="-2064490" legend="true">
         <setup></setup>
-        <update>plotxy (count ovejas) (count lobos)</update>
+        <update>plot entropia_shannon</update>
+      </pen>
+    </plot>
+    <plot x="235" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="num luciérnagas prendidas" y="230" xMin="0.0" height="220" legend="false" xMax="10.0" yMin="0.0" width="210" xAxis="tiempo" display="luciérnagas prendidas">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="default" color="-8630108" legend="true">
+        <setup></setup>
+        <update>plot count turtles with [color = yellow]</update>
       </pen>
     </plot>
   </widgets>
