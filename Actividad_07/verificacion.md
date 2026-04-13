@@ -1,0 +1,2 @@
+En la imagen obtenida de las experimentación en Netlogo, pude observar que logré replicar ese crecimiento lineal que se tiene en cierto intervalo; sin embargo, después sólo hay algunos puntos dispersos.  
+Creo que el hecho de que no se vea tan saturado como el del patrón empírico puede ser debido a la cantidad de datos que le proporcioné, puesto que el número de carros con el que experimenté fueron con 30, mi conclusión final es que al elevar el número de carros se va a lograr una mayor saturación como el del ejemplo. Se necesitan más datos por graficar entonces.
